@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Board Call</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+
+    <section id="menu">
+        <button type="button" id="webcamButton">Start Webcam</button>
+        <button type="button" id="callButton" disabled>Start Call</button>
+        <form onsubmit="event.preventDefault(); answerCall();">
+            <input type="submit" id="answerButton" disabled value="Answer Call">
+            <input type="text" id="idInput" size="36" required disabled>
+        </form>
+    </section>
+    <main>
+
+        <section id="videos">
+            <video id="localVideo" autoplay></video>
+            <video id="remoteVideo" autoplay></video>
+        </section>
+
+        <!-- <section>
+            <canvas></canvas>
+        </section> -->
+    </main>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
