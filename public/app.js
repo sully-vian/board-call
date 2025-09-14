@@ -1,6 +1,4 @@
-const servers = { iceServers: [{ urls: ["stun:stun1.l.google.com:19302", "stun:stun2.l.google.com:19302"] }] };
-
-const peerConnection = new RTCPeerConnection(servers);
+let peerConnection = null;
 let localStream = null;
 let remoteStream = null;
 
@@ -8,6 +6,7 @@ const webcamButton = document.getElementById("webcamButton");
 const callButton = document.getElementById("callButton");
 const answerButton = document.getElementById("answerButton");
 const idInput = document.getElementById("idInput");
+const shareButton = document.getElementById("shareButton");
 
 const localVideo = document.getElementById("localVideo");
 const remoteVideo = document.getElementById("remoteVideo");
@@ -27,8 +26,7 @@ socket.on("disconnect", () => {
 socket.on("room-id", (roomID) => {
     // update UI
     idInput.value = roomID;
-    console.log("recieved roomID:", roomID);
-
+    console.log("received roomID:", roomID);
     setupPeerConnectionListener(roomID);
 });
 
@@ -79,6 +77,9 @@ webcamButton.onclick = async () => {
 callButton.onclick = async () => {
     // disable to avoid changing roomID
     idInput.disabled = true;
+    callButton.disabled = true;
+    answerButton.disabled = true;
+    shareButton.disabled = false;
 
     // create offer
     const offer = await peerConnection.createOffer();
@@ -89,6 +90,8 @@ callButton.onclick = async () => {
 function answerCall() {
     // disable to avid changing roomID
     idInput.disabled = true;
+    callButton.disabled = true;
+    answerButton.disabled = true;
 
     const roomID = idInput.value;
     socket.emit("join-call", roomID);
@@ -97,11 +100,37 @@ function answerCall() {
     setupPeerConnectionListener(roomID);
 }
 
+shareButton.onclick = async () => {
+    const shareData = {
+        text: idInput.value
+    };
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+        await navigator.share(shareData);
+    } else {
+        // fallback to copy
+        navigator.clipboard.writeText(idInput.value);
+    }
+};
+
+async function initPeerConnection() {
+    const response = await fetch("/ice-servers.json");
+    const stunURLs = await response.json();
+
+    // add "stun:" at the beginning of every stun server
+    const iceServers = stunURLs.map(url => ({
+        urls: `stun:${url}`
+    }));
+    peerConnection = new RTCPeerConnection(iceServers);
+}
+
 function setupPeerConnectionListener(roomID) {
     // fires when a new ICE candidate is discovered
     peerConnection.onicecandidate = (event) => {
-        console.log("ICE candidate discovered:", event);
-        console.log("roomID:", idInput.value);
-        socket.emit("ice-candidate", event.candidate, idInput.value);
+        if (event.candidate) {
+            console.log("ICE candidate discovered:", event.candidate);
+            socket.emit("ice-candidate", event.candidate, idInput.value);
+        }
     };
 }
+
+initPeerConnection();

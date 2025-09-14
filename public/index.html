@@ -5,18 +5,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Board Call</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="/style.css">
 </head>
 
 <body>
 
     <section id="menu">
-        <button type="button" id="webcamButton">Start Webcam</button>
-        <button type="button" id="callButton" disabled>Start Call</button>
+        <button type="button" id="webcamButton">Start webcam</button>
+        <button type="button" id="callButton" disabled>Start call</button>
         <form onsubmit="event.preventDefault(); answerCall();">
-            <input type="submit" id="answerButton" disabled value="Answer Call">
+            <button type="submit" id="answerButton" disabled>Answer call</button>
             <input type="text" id="idInput" size="36" required disabled>
         </form>
+        <button id="shareButton" disabled>Share code</button>
     </section>
     <main>
 
@@ -30,7 +32,12 @@
         </section> -->
     </main>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js"></script>
+    <script>
+        // TODO: replace with the basic script tag. this is just to avoid caching
+        const timestamp = new Date().getTime();
+        document.write(`<script src="app.js?t=${timestamp}"><\/script>`);
+    </script>
+    <!-- <script src="app.js"></script> -->
 </body>
 
 </html>

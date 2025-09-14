@@ -20,7 +20,10 @@ io.on("connection", (socket) => {
         const roomID = crypto.randomUUID();
 
         // store room
-        rooms[roomID] = { callerID: socket.id, offer: offer };
+        rooms[roomID] = {
+            participants: new Set([socket.id]),
+            offer: offer
+        };
 
         // send back generated ID
         socket.emit("room-id", roomID);
@@ -34,40 +37,44 @@ io.on("connection", (socket) => {
             console.log("Failed to join: unknown roomID:", roomID);
             return;
         }
-        // exit if already connected
-        if (room.calleeID && room.calleeID != socket.id) {
+        // exit if call full
+        if (room.participants.size >= 2) {
             console.log("Failed to join: call full");
             return;
         }
+        room.participants.add(socket.id);
         socket.emit("incoming-offer", room.offer);
     });
 
     socket.on("send-answer", (answer, roomID) => {
         // store callee's ID
         const room = rooms[roomID];
-        room.calleeID = socket.id;
+        if (!room) {
+            console.log("Failed to join: unknown roomID:", roomID);
+            return;
+        }
 
-        // relay to caller
-        const callerID = room.callerID;
-        io.to(callerID).emit("incoming-answer", answer);
-        console.log("answering to:", callerID);
+        // relay to everyone else (only caller normally)
+        for (const id of room.participants) {
+            if (id !== socket.id) {
+                io.to(id).emit("incoming-answer", answer);
+                console.log("answering to:", id);
+            }
+        }
     });
 
     socket.on("ice-candidate", (candidate, roomID) => {
         const room = rooms[roomID];
         if (!room) {
-            console.log("ICE candidate faile: unknown roomID:", roomID);
+            console.log("ICE candidate failed: unknown roomID:", roomID);
             return;
         }
-        const callerID = room.callerID;
-        const calleeID = room.calleeID;
-        // forward to other peer
-        if (socket.id == callerID) {
-            io.to(calleeID).emit("ice-candidate", candidate);
-        } else if (socket.id == calleeID) {
-            io.to(callerID).emit("ice-candidate", candidate);
-        } else {
-            console.log("socket id is neither caller nor callee")
+
+        // relay to everyone else (only one normally)
+        for (const id of room.participants) {
+            if (id !== socket.id) {
+                io.to(id).emit("ice-candidate", candidate);
+            }
         }
     });
 
@@ -78,8 +85,10 @@ io.on("connection", (socket) => {
 
         for (const roomID in rooms) {
             const room = rooms[roomID];
-            if (room.callerID === socket.id || room.calleeID === socket.id) {
+            room.participants.delete(socket.id);
+            if (room.participants.size == 0) {
                 delete rooms[roomID];
+                console.log("call empty, removing ", roomID);
             }
         }
     });
